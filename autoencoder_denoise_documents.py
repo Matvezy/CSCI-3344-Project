@@ -9,25 +9,26 @@ import numpy as np
 import random
 import os
 from sklearn.model_selection import train_test_split
+from keras.losses import binary_crossentropy
 
 def graph_results(X_test, X_test_noisy, decoded_imgs):
     n = 5 # How many digits we will display
     plt.figure()
     for i in range(n):
         ax = plt.subplot(3, n, i + 1)
-        plt.imshow(X_test[i].reshape(432, 540))
+        plt.imshow(X_test[i].reshape(420, 540))
         plt.gray()
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
 
         ax = plt.subplot(3, n, i + 1 + n)
-        plt.imshow(X_test_noisy[i].reshape(432, 540))
+        plt.imshow(X_test_noisy[i].reshape(420, 540))
         plt.gray()
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
 
         ax = plt.subplot(3, n, i + 1 + 2*n)
-        plt.imshow(decoded_imgs[i].reshape(432, 540))
+        plt.imshow(decoded_imgs[i].reshape(420, 540))
         plt.gray()
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -50,6 +51,7 @@ for img in os.listdir(noisy):
     img = load_img(noisy + img, grayscale=True, target_size=(420, 540))
     img = img_to_array(img).astype('float32') / 255.
     
+    """
     # Pad the image based on its shape
     if len(img.shape) == 2:  # Grayscale image (height, width)
         img = np.pad(img, ((6, 6), (0, 0)), mode='constant')  # 6 pixels on each side
@@ -57,7 +59,7 @@ for img in os.listdir(noisy):
         img = np.pad(img, ((6, 6), (0, 0), (0, 0)), mode='constant')  # 6 pixels on each side
     else:
         raise ValueError("Unexpected image shape")
-    
+    """
     X.append(img)
 
 for img in os.listdir(clean):
@@ -65,7 +67,7 @@ for img in os.listdir(clean):
     img = img_to_array(img).astype('float32') / 255.
     # Add padding to the x-axis (axis=1) with 6 pixels on each side
     # Pad the image based on its shape
-    
+    """
     # Pad the image based on its shape
     if len(img.shape) == 2:  # Grayscale image (height, width)
         img = np.pad(img, ((6, 6), (0, 0)), mode='constant')  # 6 pixels on each side
@@ -73,7 +75,7 @@ for img in os.listdir(clean):
         img = np.pad(img, ((6, 6), (0, 0), (0, 0)), mode='constant')  # 6 pixels on each side
     else:
         raise ValueError("Unexpected image shape")
-    
+    """
     Y.append(img)
 
 X = np.array(X)
@@ -94,7 +96,7 @@ def print_shape(x):
 
 model = Sequential()
 
-
+"""
 model.add(Input(shape=(432,540,1)))
 
 model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
@@ -111,6 +113,12 @@ model.add(UpSampling2D((3, 3)))
 model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
 model.add(UpSampling2D((3, 3)))
 model.add(Conv2D(1, (3, 3), activation='sigmoid', padding='same'))
+model.summary()
+
+#decoded_imgs = np.squeeze(model.predict(X_valid), axis=3)
+
+#graph_results(X_valid, y_valid, decoded_imgs)
+
 #model.add(Lambda(print_shape))
 """
 model.add(Input(shape=(420,540,1)))
@@ -127,9 +135,10 @@ model.add(UpSampling2D((2, 2)))
 model.add(Conv2D(1, (3, 3), activation='sigmoid', padding='same'))
 #model.add(Lambda(print_shape))
 model.summary()
-"""
 
-weights_path = 'conv_denoise_docs_sigm.h5'
+
+weights_path = 'last_model.h5'
+history = None
 if os.path.exists(weights_path):
     # Load model weights
     print('Loading model weights from: ', weights_path)
@@ -140,7 +149,7 @@ if os.path.exists(weights_path):
 else:
     # Train the model
     model.compile(optimizer='adam', loss='binary_crossentropy')
-    model.fit(X_train, y_train, epochs=10, batch_size=8, shuffle=True)
+    history = model.fit(X_train, y_train, epochs=10, batch_size=8, shuffle=True)
 
     # Save model weights
     model.save_weights(weights_path)
@@ -164,9 +173,18 @@ else:
 #autoencoder.compile(optimizer='adam', loss='binary_crossentropy')
 """
 #print("X_valid shape: ", X_test.shape)
+#decoded_imgs = np.squeeze(model.predict(X_valid), axis=3)
 decoded_imgs = np.squeeze(model.predict(X_valid), axis=3)
-print("Decoded images shape: ", decoded_imgs.shape)
-graph_results(X_valid, y_valid, decoded_imgs)
+y_valid = np.squeeze(y_valid, axis=3)
 
-mse = np.mean(np.square(y_test - decoded_imgs))
-print("CNN Model MSE: ", mse)
+print("Decoded images shape: ", decoded_imgs.shape)
+plt.figure(figsize=(10, 6))
+plt.plot(history.history['loss'])
+plt.title('Model Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.show()
+
+graph_results(X_valid, y_valid, decoded_imgs)
+bce_loss = binary_crossentropy(y_valid, decoded_imgs).numpy().mean()
+print("Large Model Mean BCE Loss:", bce_loss)

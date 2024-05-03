@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import random
 import os
+from keras.losses import binary_crossentropy
 
 def graph_results(X_test, X_test_noisy, decoded_imgs):
     n = 5 # How many digits we will display
@@ -47,6 +48,7 @@ X_test_noisy = X_test + noise_test
 X_train_noisy = np.clip(X_train_noisy, 0., 1.)
 X_test_noisy = np.clip(X_test_noisy, 0., 1.)
 
+
 model = Sequential()
 
 model.add(Input(shape=(28, 28, 1)))
@@ -58,9 +60,25 @@ model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
 model.add(UpSampling2D((2, 2)))
 model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
 model.add(UpSampling2D((2, 2)))
-model.add(Conv2D(1, (3, 3), activation='relu', padding='same'))
+model.add(Conv2D(1, (3, 3), activation='sigmoid', padding='same'))
+"""
 
-weights_path = 'conv_denoise_MNIST_64.h5'
+model = Sequential()
+
+model.add(Input(shape=(28, 28, 1)))
+model.add(Conv2D(8, (3, 3), activation='relu', padding='same'))
+model.add(MaxPooling2D((2, 2), padding='same'))
+model.add(Conv2D(16, (3, 3), activation='relu', padding='same'))
+model.add(MaxPooling2D((2, 2), padding='same'))
+model.add(Conv2D(16, (3, 3), activation='relu', padding='same'))
+model.add(UpSampling2D((2, 2)))
+model.add(Conv2D(8, (3, 3), activation='relu', padding='same'))
+model.add(UpSampling2D((2, 2)))
+model.add(Conv2D(1, (3, 3), activation='sigmoid', padding='same'))
+"""
+model.summary()
+weights_path = "" #'conv_denoise_MNIST_64.h5'
+history = []
 if os.path.exists(weights_path):
     # Load model weights
     print('Loading model weights from: ', weights_path)
@@ -68,15 +86,24 @@ if os.path.exists(weights_path):
     print('Model weights loaded from', weights_path)
 else:
     # Train the model
-    model.compile(optimizer='adam', loss='mean_squared_error')
-    model.fit(X_train_noisy, X_train, epochs=10, batch_size=128, shuffle=True)
+    model.compile(optimizer='adam', loss='binary_crossentropy')
+    history = model.fit(X_train_noisy, X_train, epochs=10, batch_size=128, shuffle=True)
 
     # Save model weights
-    model.save_weights(weights_path)
+    #model.save_weights(weights_path)
     print('Model weights saved to: ', weights_path)
 
 decoded_imgs = np.squeeze(model.predict(X_test_noisy), axis=3)
 graph_results(X_test, X_test_noisy, decoded_imgs)
 
-mse = np.mean(np.square(X_test_noisy - decoded_imgs))
-print("CNN Model MSE: ", mse)
+plt.figure(figsize=(10, 6))
+plt.plot(history.history['loss'])
+plt.title('Model Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.show()
+
+graph_results(X_test, X_test_noisy, decoded_imgs)
+
+bce_loss = binary_crossentropy(X_test, decoded_imgs).numpy().mean()
+print("Large Model Mean BCE Loss:", bce_loss)

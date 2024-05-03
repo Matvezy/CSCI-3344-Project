@@ -8,6 +8,7 @@ import numpy as np
 import random
 import keras
 from keras import layers
+from keras.losses import binary_crossentropy
 
 def graph_results(X_test, X_test_noisy, decoded_imgs):
     n = 5 # How many digits we will display
@@ -56,29 +57,41 @@ print(X_test_noisy.shape)
 
 # Define the encoding dimension
 encoding_dim = 32
-
-# Create an instance of the Sequential class
-model = Sequential()
-
 # Build the autoencoder
 input_dim = X_train_noisy.shape[-1]
 
-model.add(Dense(encoding_dim, activation='relu', input_shape=(input_dim,)))
-model.add(Dense(input_dim, activation='relu'))
+"""
+# Create an instance of the Sequential class
+model = Sequential()
 
-model.compile(optimizer='adam', loss='mean_squared_error')
+
+
+model.add(Dense(encoding_dim, activation='relu', input_shape=(input_dim,)))
+model.add(Dense(input_dim, activation='sigmoid'))
+model.summary() 
+model.compile(optimizer='adam', loss='binary_crossentropy')
 
 # Train the model
-model.fit(X_train_noisy, X_train, epochs=10, batch_size=128, shuffle=True)
+history = model.fit(X_train_noisy, X_train, epochs=10, batch_size=128, shuffle=True)
 
+plt.figure(figsize=(10, 6))
+plt.plot(history.history['loss'])
+plt.title('Model Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.show()
 
 decoded_imgs = model.predict(X_test_noisy)
 
 graph_results(X_test, X_test_noisy, decoded_imgs)
 
-mse = np.mean(np.square(X_test_noisy - decoded_imgs))
-print("Small Model MSE: ", mse)
+#mse = np.mean(np.square(X_test_noisy - decoded_imgs))
+#print("Small Model MSE: ", mse)
 
+bce_loss = binary_crossentropy(X_test, decoded_imgs).numpy().mean()
+print("Large Model Mean BCE Loss:", bce_loss)
+
+"""
 model = Sequential()
 model.add(Input(shape=(784,)))
 model.add(Dense(128, activation='relu', input_shape=(input_dim,)))
@@ -86,17 +99,25 @@ model.add(Dense(64, activation='relu'))
 model.add(Dense(32, activation='relu'))
 model.add(Dense(64, activation='relu'))
 model.add(Dense(128, activation='relu'))
-model.add(Dense(input_dim, activation='relu'))
+model.add(Dense(input_dim, activation='sigmoid'))
 
-model.compile(optimizer='adam', loss='mean_squared_error')
+model.compile(optimizer='adam', loss='binary_crossentropy')
+model.summary()
 
-model.fit(X_train_noisy, X_train, epochs=100, batch_size=128, shuffle=True)
+history = model.fit(X_train_noisy, X_train, epochs=10, batch_size=128, shuffle=True)
 
 decoded_imgs = model.predict(X_test_noisy)
 
+#model.fit(X_train_noisy, X_train, epochs=10, batch_size=128, shuffle=True)
+
+plt.figure(figsize=(10, 6))
+plt.plot(history.history['loss'])
+plt.title('Model Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.show()
+
 graph_results(X_test, X_test_noisy, decoded_imgs)
 
-mse = np.mean(np.square(X_test_noisy - decoded_imgs))
-print("Large Model MSE: ", mse)
-
-#TALK ABOUT OVERFITTING!
+bce_loss = binary_crossentropy(X_test, decoded_imgs).numpy().mean()
+print("Large Model Mean BCE Loss:", bce_loss)
